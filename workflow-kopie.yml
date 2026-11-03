@@ -1,0 +1,68 @@
+# Kopie von .github/workflows/aktualisieren.yml zum Einfügen im Browser (siehe Anleitung, Schritt 2)
+name: Campingwetter aktualisieren
+
+on:
+  schedule:
+    - cron: "20 3,9,15,21 * * *"   # viermal am Tag (Zeiten in UTC), kurz nach den neuen ICON-CH2-Läufen
+  workflow_dispatch:                # «Run workflow» im Tab Actions startet einen Lauf von Hand
+
+concurrency:
+  group: campingwetter
+  cancel-in-progress: false
+
+jobs:
+  aktualisieren:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        id: py
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Umgebung von MeteoSchweiz holen
+        run: git clone --depth 1 https://github.com/MeteoSwiss/opendata-nwp-demos.git demos
+
+      - name: Python-Pakete aus dem Zwischenspeicher holen
+        uses: actions/cache@v4
+        with:
+          path: demos/.venv
+          key: venv-${{ runner.os }}-py${{ steps.py.outputs.python-version }}-${{ hashFiles('demos/poetry.lock') }}-v1
+
+      - name: Python-Pakete installieren (nur beim ersten Mal langsam)
+        run: |
+          if ! demos/.venv/bin/python -c "import earthkit.data" 2>/dev/null; then
+            rm -rf demos/.venv
+            pip install --quiet poetry
+            cd demos
+            poetry config virtualenvs.in-project true
+            poetry install --no-ansi --no-root
+            cd ..
+          fi
+          demos/.venv/bin/pip install --quiet ecmwf-opendata
+
+      - name: Reisezeiten aus dem Zwischenspeicher holen
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: reisezeit-${{ github.run_id }}
+          restore-keys: reisezeit-
+
+      - name: Wetterdaten laden und Dashboard bauen
+        env:
+          ORS_SCHLUESSEL: ${{ secrets.ORS_SCHLUESSEL }}
+          OTD_SCHLUESSEL: ${{ secrets.OTD_SCHLUESSEL }}
+        run: demos/.venv/bin/python campingwetter.py
+
+      - name: Auf Cloudflare Pages veröffentlichen
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_PROJEKT: ${{ vars.CF_PROJEKT || 'campingwetter' }}
+        run: |
+          npx --yes wrangler@3 pages project create "$CF_PROJEKT" --production-branch main || echo "Projekt gibt es schon"
+          npx --yes wrangler@3 pages deploy site --project-name "$CF_PROJEKT" --branch main --commit-dirty=true

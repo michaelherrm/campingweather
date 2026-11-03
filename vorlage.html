@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campingwetter</title>
+<script>/* Farbschema sofort setzen: Tag hell, Nacht dunkel */
+(function(){ var m="auto"; try{ m=localStorage.getItem("campwetter3:theme")||"auto"; }catch(e){}
+  var d=new Date(), h=d.getHours()+d.getMinutes()/60, dark = m==="dark" || (m==="auto" && (h<7 || h>=19));
+  document.documentElement.setAttribute("data-theme", dark?"dark":"light"); })();</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Layout: Empfehlung oben, darunter Wann/Wo/Wie, dann Karte mit Rangliste und Ortsdetail daneben; unter 980px einspaltig. */
+:root{
+  color-scheme: light;
+  --bg:#f2f5ef; --surface:#ffffff; --surface2:#f7f9f4; --ink:#1d2a22; --ink2:#536057; --mute:#86907f; --line:#e0e6da;
+  --accent:#2f7a4a; --accent-ink:#ffffff; --accent-soft:#e2efe5; --chip:#edf1e9; --warn:#a14c00;
+  --hero1:#2f7a4a; --hero2:#3f8f5b; --hero-ink:#ffffff; --hero-soft:rgba(255,255,255,.16);
+  --water:#dce8ee; --land:#fbfcf9; --geo:rgba(29,42,34,.55);
+  --shadow:0 1px 2px rgba(29,42,34,.05),0 8px 24px rgba(29,42,34,.06);
+  --eig-0:#e3e6da; --eig-1:#c9dfae; --eig-2:#8ec26c; --eig-3:#3f963f; --eig-4:#145c26;
+  --reg-0:#e8edf2; --reg-1:#b7d3f6; --reg-2:#6da7ec; --reg-3:#256abf; --reg-4:#0d366b;
+  --son-0:#e7e6df; --son-1:#f4e2a0; --son-2:#efc23c; --son-3:#d99000; --son-4:#9a5a00;
+  --tmp-0:#e8e4e0; --tmp-1:#f5ccb3; --tmp-2:#ec9870; --tmp-3:#d6562a; --tmp-4:#8f2d0e;
+  --wnd-0:#e9e6ee; --wnd-1:#cfc4e6; --wnd-2:#a28fd4; --wnd-3:#6f55b5; --wnd-4:#3f2a80;
+  --nac-0:#e6eeee; --nac-1:#bfdcdc; --nac-2:#7fbcbc; --nac-3:#2f8f90; --nac-4:#0e5556;
+  --f-head:"Nunito",ui-rounded,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-body:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:16px;
+}
+:root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#0f1411; --surface:#171e19; --surface2:#1c241e; --ink:#eef3ec; --ink2:#b7c2b4; --mute:#869183; --line:#2a332c;
+    --accent:#7fd39a; --accent-ink:#0f1411; --accent-soft:#1f3326; --chip:#222b24; --warn:#f0a35a;
+    --hero1:#1f4a2e; --hero2:#24563a; --hero-ink:#f1f7ef; --hero-soft:rgba(255,255,255,.10);
+    --water:#121a1f; --land:#1b221d; --geo:rgba(238,243,236,.5);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --eig-0:#262b23; --eig-1:#2e5230; --eig-2:#3d8540; --eig-3:#79bd62; --eig-4:#cdeaa6;
+    --reg-0:#232a31; --reg-1:#184f95; --reg-2:#2a78d6; --reg-3:#6da7ec; --reg-4:#cde2fb;
+    --son-0:#2b2a24; --son-1:#6a4a05; --son-2:#a87400; --son-3:#dca61a; --son-4:#ffe38a;
+    --tmp-0:#2c2623; --tmp-1:#6f2b13; --tmp-2:#b04b23; --tmp-3:#e38154; --tmp-4:#fccbb0;
+    --wnd-0:#26232c; --wnd-1:#3f2f6b; --wnd-2:#6650b0; --wnd-3:#a08de0; --wnd-4:#dcd2fa;
+    --nac-0:#222a2a; --nac-1:#1d4c4d; --nac-2:#2e7f80; --nac-3:#6cbcbc; --nac-4:#c4ecec;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15.5px/1.5 var(--f-body);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+svg.i{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+.app{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:22px 48px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.logo svg{width:24px;height:24px;stroke-width:2}
+h1{font:800 26px/1.1 var(--f-head);margin:0}
+h2{font:700 18px/1.25 var(--f-head);margin:0;text-wrap:balance}
+.sub{color:var(--ink2)}
+.stand{margin-left:auto;color:var(--mute);font-size:13px}
+.themetabs button{display:inline-flex;align-items:center;gap:5px}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:var(--accent);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+
+/* Empfehlung */
+.hero{border-radius:20px;padding:20px 22px;background:linear-gradient(135deg,var(--hero1),var(--hero2));color:var(--hero-ink);display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;box-shadow:var(--shadow)}
+.hero-txt{flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.eyebrow{font:700 13px/1.3 var(--f-body);letter-spacing:.04em;text-transform:uppercase;opacity:.85}
+.hero h2{font:800 clamp(22px,3.2vw,30px)/1.15 var(--f-head);overflow-wrap:anywhere}
+.hero-where{opacity:.92;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.hero .stats{gap:8px;margin-top:4px}
+.hero .stat{background:var(--hero-soft);border-radius:999px;padding:5px 12px}
+.hero .pill{background:#ffffff;color:#1d2a22;border-color:transparent}
+.hero-btn{background:#ffffff;color:#1d4a2e;border:0;border-radius:999px;padding:10px 18px;font-weight:700}
+.hero-btn:hover{filter:brightness(.95)}
+
+/* Auswahl */
+.filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:980px){.filters{grid-template-columns:minmax(0,1fr)}}
+.fgroup{padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.fgroup+.fgroup{border-left:1px solid var(--line)}
+@media (max-width:980px){.fgroup+.fgroup{border-left:0;border-top:1px solid var(--line)}}
+.fgroup h3{font:800 16px/1.2 var(--f-head);margin:0;display:flex;align-items:center;gap:8px}
+.fgroup h3 svg{color:var(--accent)}
+.lbl{font-size:13px;font-weight:600;color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{background:var(--chip);border:1px solid transparent;border-radius:999px;padding:5px 12px;font-weight:600;font-size:14px;white-space:nowrap}
+.chips button:hover{border-color:var(--mute)}
+.chips button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.chips button.trend{border:1px dashed var(--mute)}
+.chips button.trend[aria-pressed="true"]{border-color:var(--accent)}
+.chips small{font-weight:400;opacity:.8}
+.daystrip{display:flex;gap:0;background:var(--chip);border-radius:14px;padding:3px;touch-action:none;user-select:none;-webkit-user-select:none}
+.daystrip button{-webkit-tap-highlight-color:transparent;flex:1 1 0;min-width:0;background:none;border:0;border-radius:11px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;line-height:1.15;color:var(--ink)}
+.daystrip button small{font-size:11.5px;color:var(--ink2);font-weight:600}
+.daystrip button b{font:800 15px/1.2 var(--f-head)}
+.daystrip button em{font-style:normal;font-size:10px;color:var(--mute);height:12px;white-space:nowrap;overflow:hidden;max-width:100%}
+.daystrip button.trend b{text-decoration:underline dashed var(--mute) 1.5px;text-underline-offset:3px}
+.daystrip button.on{background:var(--accent);color:var(--accent-ink);border-radius:0}
+.daystrip button.on small,.daystrip button.on em{color:var(--accent-ink);opacity:.85}
+.daystrip button.on.first{border-radius:11px 0 0 11px}.daystrip button.on.last{border-radius:0 11px 11px 0}.daystrip button.on.first.last{border-radius:11px}
+.daystrip button:not(.on):hover{background:var(--surface)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.slider{display:flex;align-items:center;gap:10px}
+.slider input{flex:1 1 120px;max-width:200px;accent-color:var(--accent)}
+.slider output{font-variant-numeric:tabular-nums;font-weight:700;min-width:58px}
+.search{position:relative;flex:1 1 200px;min-width:0}
+.search input{width:100%;font:inherit;color:inherit;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:7px 14px 7px 36px}
+.search > svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--mute)}
+.sugg{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:4px;display:flex;flex-direction:column}
+.sugg button{background:none;border:0;border-radius:8px;text-align:left;padding:7px 10px;display:flex;justify-content:space-between;gap:12px}
+.sugg button:hover,.sugg button:focus-visible{background:var(--chip)}
+.sugg small{color:var(--mute)}
+.link{background:none;border:0;padding:4px 2px;color:var(--accent);font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.link[aria-pressed="true"]{text-decoration:underline}
+.hint{font-size:13px;color:var(--ink2)}
+.fzrow{display:flex;flex-direction:column;gap:6px}
+.tabs button{display:inline-flex;align-items:center;gap:5px}
+.chk{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--accent)}
+
+/* Karte */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;grid-template-areas:"map rank" "detail rank";grid-template-rows:auto 1fr;gap:18px;align-items:start}
+.mapcard{grid-area:map}#rankCard{grid-area:rank}#detailCard{grid-area:detail}
+@media (max-width:980px){.main{grid-template-columns:minmax(0,1fr);grid-template-areas:"map" "rank" "detail";grid-template-rows:auto}}
+#detailCard .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:8px}
+.days .dh b,.days .dh small{white-space:nowrap}
+.mapcard{padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+.tabs{display:flex;flex-wrap:wrap;gap:2px;background:var(--chip);border-radius:999px;padding:3px}
+.tabs button{background:none;border:0;border-radius:999px;padding:5px 12px;font-weight:600;font-size:14px;color:var(--ink2);white-space:nowrap}
+.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.maphead{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+.mapwrap{position:relative;line-height:0;border-radius:12px;overflow:hidden;background:var(--water)}
+canvas{display:block;width:100%;touch-action:manipulation;cursor:pointer}
+.tip{position:absolute;pointer-events:none;z-index:2;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:9px 12px;line-height:1.4;font-size:13.5px;box-shadow:var(--shadow);width:max-content;max-width:270px;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.tip .stats{gap:4px 10px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--ink2)}
+.legend .sw{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:6px;vertical-align:-2px;border:1px solid var(--line)}
+.status{font-size:14px;color:var(--warn);font-weight:600}
+
+/* Rangliste und Detail */
+aside{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.meta{color:var(--ink2);font-size:13.5px;margin:0}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rank button{width:100%;text-align:left;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:3px 10px;align-items:center}
+.rank button:hover{border-color:var(--mute)}
+.rank button[aria-current="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.rank .no{grid-row:span 3;align-self:start;font:800 14px var(--f-head);width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.rank .nm{font-weight:700;overflow-wrap:anywhere}
+.rank .stats{grid-column:2 / span 2;font-size:13px;color:var(--ink2)}
+.rank .ex{grid-column:2 / span 2;font-size:12.5px;color:var(--mute)}
+.stats{display:flex;flex-wrap:wrap;gap:3px 12px;font-variant-numeric:tabular-nums}
+.stat{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.stat svg{width:15px;height:15px}
+.pill{display:inline-flex;align-items:center;gap:6px;font:700 12.5px/1 var(--f-body);white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:4px 9px 4px 7px;background:var(--surface);color:var(--ink)}
+.pill i{width:10px;height:10px;border-radius:50%}
+.empty{color:var(--ink2);font-size:14px;margin:0}
+.days{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.days li{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.days li.on{border-color:var(--accent);background:var(--accent-soft)}
+.days .dh{display:flex;align-items:center;gap:8px}
+.days .dh small{color:var(--mute)}
+.days .dh .pill{margin-left:auto}
+.days .stats{color:var(--ink2)}
+.gef{color:var(--mute)}
+.method{padding:4px 18px;color:var(--ink2);font-size:14px}
+.method summary{cursor:pointer;font:800 16px/1.2 var(--f-head);color:var(--ink);padding:12px 0}
+.method p{margin:0 0 10px;max-width:95ch}
+.method b{color:var(--ink)}
+.quellen{color:var(--mute);font-size:12.5px;line-height:1.6;padding:0 4px}
+.quellen a{color:inherit;font-weight:600}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-tent" viewBox="0 0 24 24"><path d="M3 20 12 5l9 15M12 5v15M3 20h18M9.5 20 12 15l2.5 5"/></symbol>
+  <symbol id="i-rain" viewBox="0 0 24 24"><path d="M12 3.5c3 4 5.5 6.8 5.5 10a5.5 5.5 0 0 1-11 0c0-3.2 2.5-6 5.5-10z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+  <symbol id="i-temp" viewBox="0 0 24 24"><path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v7"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3M3 12h7"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24"><path d="M4 16v-3l2-5h12l2 5v3zM4 16v2.5M20 16v2.5M4 13h16"/><circle cx="7.5" cy="16" r="1"/><circle cx="16.5" cy="16" r="1"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-slide" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.5c0 4.2 2.9 7.8 7 9.5 4.1-1.7 7-5.3 7-9.5V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-train" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="13" rx="3"/><path d="M5 11h14M8.5 20l1.5-3.5M15.5 20 14 16.5"/><circle cx="9" cy="14" r=".8"/><circle cx="15" cy="14" r=".8"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+</svg>
+<div class="app">
+  <header>
+    <span class="logo"><svg class="i"><use href="#i-tent"/></svg></span>
+    <div><h1>Campingwetter</h1><div class="sub">Wo bleibt es trocken, sonnig und warm?</div></div>
+    <span class="stand" id="stand"></span>
+    <div class="tabs themetabs" id="themes" role="group" aria-label="Farbschema"></div>
+  </header>
+
+  <section class="hero" id="hero" aria-live="polite">
+    <div class="hero-txt">
+      <span class="eyebrow" id="heroEyebrow">Daten werden entpackt …</span>
+      <h2 id="heroName">Einen Moment</h2>
+      <span class="hero-where" id="heroWhere"></span>
+      <div class="stats" id="heroStats"></div>
+    </div>
+    <button class="hero-btn" id="heroBtn" type="button" hidden>Details ansehen</button>
+  </section>
+
+  <section class="card filters" aria-label="Auswahl">
+    <div class="fgroup">
+      <h3><svg class="i"><use href="#i-cal"/></svg>Wann?</h3>
+      <div class="daystrip" id="days" role="group" aria-label="Tage wählen"></div>
+      <span class="hint">Tippe auf einen Tag oder ziehe über mehrere Tage. Tage mit «Trend» sind noch grob.</span>
+    </div>
+    <div class="fgroup">
+      <h3><svg class="i"><use href="#i-pin"/></svg>Wo?</h3>
+      <div class="row">
+        <div class="search"><svg class="i"><use href="#i-search"/></svg><input id="ortq" type="search" placeholder="Ort suchen, z. B. Bern" autocomplete="off" aria-label="Ort für den Umkreis" aria-controls="sugg"><div class="sugg" id="sugg" role="listbox" hidden></div></div>
+      </div>
+      <div class="row"><button class="link" id="pickBtn" type="button" aria-pressed="false"><svg class="i"><use href="#i-pin"/></svg>Auf der Karte wählen</button><button class="link" id="clearBtn" type="button" hidden>Umkreis entfernen</button></div>
+      <span class="hint" id="pickHint" hidden>Klicke auf die Karte, um den Mittelpunkt zu setzen.</span>
+      <div class="slider" id="radRow" hidden><label class="lbl" for="rad">Umkreis</label><input id="rad" type="range" min="10" max="300" step="5"><output id="radOut" for="rad"></output></div>
+      <div id="fzRow" class="fzrow" hidden><div class="row"><span class="lbl" id="fzLbl">Reisezeit</span><div class="tabs" id="fzModes" role="group" aria-label="Verkehrsmittel"></div></div><div class="chips" id="fzChips"></div><span class="hint" id="fzHint"></span></div>
+    </div>
+    <div class="fgroup">
+      <h3><svg class="i"><use href="#i-temp"/></svg>Wie warm soll es werden?</h3>
+      <div class="slider"><label class="lbl" for="warm">Warm ab</label><input id="warm" type="range" min="8" max="30" step="1"><output id="warmOut" for="warm"></output></div>
+      <label class="chk"><input type="checkbox" id="gef"> Gefühlte Temperatur (mit Wind)</label>
+      <span class="hint">Regen, Sonne und Max.-Temperatur fliessen in die Eignung ein.</span>
+    </div>
+  </section>
+
+  <div class="main">
+    <section class="card mapcard">
+      <div class="toolbar">
+        <div class="tabs" id="layers" role="group" aria-label="Karte zeigt"></div>
+        <div class="tabs" id="views" role="group" aria-label="Kartenausschnitt"></div>
+      </div>
+      <div class="maphead"><h2 id="mapTitle">Eignung</h2><span class="sub" id="mapSub"></span></div>
+      <div class="mapwrap" id="mapwrap">
+        <canvas id="map" role="img" aria-label="Rasterkarte der Wettereignung. Die Rangliste daneben nennt die besten Gegenden als Text."></canvas>
+        <div class="tip" id="tip" hidden></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="status" id="status" role="status" hidden></div>
+    </section>
+
+      <section class="card panel" id="rankCard">
+        <h2 id="rankTitle">Beste Gegenden</h2>
+        <p class="meta" id="rankNote"></p>
+        <ol class="rank" id="rank"></ol>
+        <p class="empty" id="rankEmpty">Die Rangliste erscheint, sobald die Daten entpackt sind.</p>
+      </section>
+      <section class="card panel" id="detailCard">
+        <h2>Ort im Detail</h2>
+        <div id="detail"><p class="empty">Klicke auf die Karte oder auf eine Gegend in der Rangliste.</p></div>
+      </section>
+
+  </div>
+
+  <details class="card method">
+    <summary>So wird bewertet</summary>
+    <p><b>Eignung = Regen × (60 % Sonne + 40 % Max.-Temperatur)</b>, pro Tag gerechnet und über die gewählten Tage gemittelt. Stufen: Top ab 80 %, Gut ab 60 %, Mittel ab 40 %, Mässig ab 20 %, darunter Ungeeignet.</p>
+    <p><b>Regen</b> wirkt als Ausschlusskriterium: bis 0.2 mm zählt ein Tag als trocken, ab rund 6 mm ist er ungeeignet. <b>Sonne</b> zählt als Anteil der astronomisch möglichen Dauer (im Oktober rund 11 Stunden); 80 % gelten als volle Punktzahl. Die Karte zeigt die Sonnenstunden pro Tag. Die <b>Max.-Temperatur</b> (Tageshöchstwert) gibt die volle Punktzahl ab «Warm ab», 12 °C darunter keine mehr.</p>
+    <p><b>Gefühlte Temperatur:</b> Ist das Häkchen gesetzt, zählt die Max.-Temperatur so, wie sie sich mit dem Wind anfühlt (Windchill-Formel, gilt bis 10 °C und ab 5 km/h Wind). Bei 2 °C und 20 km/h fühlt es sich wie etwa −3 °C an.</p>
+    <p id="ensNote" hidden><b>Sicherheit (Ensemble):</b> Das Modell wird mehrmals mit leicht veränderten Startbedingungen gerechnet. «70 % sicher» heisst: In 7 von 10 Läufen wird der Ort mindestens «Gut». «Trocken» heisst unter 0.5 mm Regen. Der Windchill stammt dabei aus dem Hauptlauf, gerechnet wird mit der gefühlten Temperatur und dem «Warm ab» aus dem Notebook. Schiebst du den Regler hier, ändert sich die Sicherheit darum nicht mit. Bei fast gleicher Eignung reiht die Rangliste die sicherere Gegend vor. Für Trendtage gibt es keine Sicherheit.</p>
+    <p id="srcNote"></p>
+  </details>
+  <footer class="quellen" id="quellen"></footer>
+</div>
+
+<script>
+'use strict';
+const META = /*__META__*/null;
+const GEO_RAW = /*__GEO__*/null;
+const DATA_B64 = "__DATA__";
+const ORTE_RAW = /*__ORTE__*/[];
+
+// Farbskalen der Karte, gleich bei Tag und Nacht (Eignung folgt dem Farbschema)
+const RAMPS = {
+  reg:['#eef4fb','#b9d4f2','#6fa6e3','#2f6fc0','#0f3a7a'],                                   // hell- bis dunkelblau
+  son:['#ecebe3','#f4e2a0','#efc23c','#d99000','#9a5a00'],
+  tmp:['#1f3f7a','#2f62ad','#5f92d3','#a8c8ec','#f3e7c4','#f5b97f','#e5733f','#b32f24'],      // blau bis rot
+  wnd:['#f8f6fc','#d9d0ee','#ab98d9','#7458b8','#3d2178'],                                   // weiss bis dunkellila
+};
+RAMPS.nac = RAMPS.tmp;
+RAMPS.sic = ['#f1f0ec','#d7e3ea','#9cc3d6','#4f8fb3','#1f5378'];
+const T_STUFEN = [-5,0,5,10,15,20,25];   // Grenzen der Temperaturklassen in °C, für Max.- und Nachttemperatur
+const LAYERS = {
+  eig:{label:'Eignung',     title:'Eignung zum Campen'},
+  reg:{label:'Regen',       title:'Regenmenge'},
+  son:{label:'Sonne',       title:'Sonnenstunden pro Tag'},
+  tmp:{label:'Max.-Temp.',  title:'Max.-Temperatur (Tageshöchstwert)'},
+  sic:{label:'Sicherheit',  title:'Chance auf «Gut» oder besser (Ensemble)'},
+};
+const VIEWS = {
+  icon:{label:'ICON-Gebiet', box:null, block:6, spacing:90, labelRank:1},
+  ch:  {label:'Schweiz', box:{lon:[5.8,10.7],lat:[45.7,47.95]}, block:3, spacing:30, labelRank:2},
+  um:  {label:'Umkreis', box:null, block:3, spacing:30, labelRank:2},
+};
+const CLASS = ['Ungeeignet','Mässig','Mittel','Gut','Top'];
+const WD = ['So','Mo','Di','Mi','Do','Fr','Sa'], MON = ['Jan.','Feb.','März','Apr.','Mai','Juni','Juli','Aug.','Sept.','Okt.','Nov.','Dez.'];
+// [Name, Breite, Länge, Rang] – Rang 1 wird immer beschriftet, Rang 2 nur in gezoomten Ansichten
+const CITIES = [
+ ['Zürich',47.37,8.54,1],['Bern',46.95,7.45,1],['Genf',46.20,6.14,1],['Basel',47.56,7.59,1],['Lugano',46.00,8.95,1],['Chur',46.85,9.53,1],
+ ['Lausanne',46.52,6.63,2],['Luzern',47.05,8.31,2],['St. Gallen',47.42,9.38,2],['Sion',46.23,7.36,2],['Interlaken',46.69,7.86,2],['Locarno',46.17,8.80,3],
+ ['Davos',46.80,9.84,2],['St. Moritz',46.50,9.84,2],['Zermatt',46.02,7.75,2],['Andermatt',46.63,8.59,2],['Neuenburg',46.99,6.93,2],['Freiburg',46.80,7.15,3],
+ ['Schaffhausen',47.70,8.63,2],['Brig',46.32,7.99,3],['Bellinzona',46.19,9.02,2],['Thun',46.76,7.63,3],['Biel',47.14,7.25,3],['Winterthur',47.50,8.72,3],
+ ['Glarus',47.04,9.07,3],['Scuol',46.80,10.30,2],['Martigny',46.10,7.07,3],['Delsberg',47.36,7.34,2],['Aarau',47.39,8.05,3],['Altdorf',46.88,8.64,3],
+ ['Poschiavo',46.32,10.06,3],['Montreux',46.43,6.91,3],['Yverdon',46.78,6.64,3],['Meiringen',46.73,8.19,3],
+ ['Mailand',45.46,9.19,1],['Turin',45.07,7.69,1],['Genua',44.41,8.93,1],['Venedig',45.44,12.33,1],['Verona',45.44,10.99,2],['Bologna',44.49,11.34,1],
+ ['Florenz',43.77,11.26,1],['Bozen',46.50,11.35,1],['Trient',46.07,11.12,3],['Aosta',45.74,7.32,2],['Como',45.81,9.08,2],['Bergamo',45.70,9.67,3],
+ ['Triest',45.65,13.78,1],['Udine',46.06,13.24,3],['Sondrio',46.17,9.87,2],['Domodossola',46.12,8.29,2],['Cortina',46.54,12.14,3],['Parma',44.80,10.33,3],
+ ['Cuneo',44.39,7.55,3],['La Spezia',44.10,9.82,3],['Rimini',44.06,12.57,3],['Ancona',43.62,13.52,3],['Pisa',43.72,10.40,3],
+ ['München',48.14,11.58,1],['Stuttgart',48.78,9.18,1],['Freiburg i. Br.',47.99,7.85,2],['Konstanz',47.66,9.18,2],['Ulm',48.40,9.99,3],['Augsburg',48.37,10.90,3],
+ ['Nürnberg',49.45,11.08,1],['Karlsruhe',49.01,8.40,3],['Regensburg',49.02,12.10,3],['Kempten',47.73,10.31,3],['Garmisch',47.49,11.10,3],['Passau',48.57,13.46,3],
+ ['Saarbrücken',49.24,7.00,3],['Luxemburg',49.61,6.13,3],
+ ['Innsbruck',47.27,11.39,1],['Salzburg',47.80,13.04,1],['Bregenz',47.50,9.75,2],['Linz',48.31,14.29,3],['Graz',47.07,15.44,1],['Klagenfurt',46.62,14.31,3],
+ ['Wien',48.21,16.37,1],['Villach',46.61,13.85,3],['Lienz',46.83,12.77,3],['Vaduz',47.14,9.52,3],['Ljubljana',46.05,14.51,1],['Zagreb',45.81,15.98,1],
+ ['Rijeka',45.33,14.44,3],['Pilsen',49.75,13.38,3],
+ ['Lyon',45.76,4.84,1],['Grenoble',45.19,5.72,2],['Annecy',45.90,6.13,2],['Chamonix',45.92,6.87,2],['Strassburg',48.58,7.75,1],['Mülhausen',47.75,7.34,3],
+ ['Besançon',47.24,6.02,2],['Dijon',47.32,5.04,1],['Nizza',43.70,7.27,1],['Marseille',43.30,5.37,1],['Avignon',43.95,4.81,3],['Montpellier',43.61,3.88,3],
+ ['Clermont-Ferrand',45.78,3.09,1],['Nancy',48.69,6.18,3],['Reims',49.26,4.03,3],['Paris',48.86,2.35,1],['Briançon',44.90,6.64,3],['Gap',44.56,6.08,3],
+ ['Orléans',47.90,1.91,3],['Troyes',48.30,4.07,3],
+];
+
+/* ---------- Zustand ---------- */
+const $ = id => document.getElementById(id);
+const G = META ? META.grid : null, N = G ? G.nx*G.ny : 0, ND = META ? META.days.length : 0, NV = META&&META.nv ? META.nv : 5;
+const HAT_AUTO = !!(META && META.fz && META.start), HAT_OEV = !!(META && META.oev && META.start), HAT_FZ = HAT_AUTO||HAT_OEV, START = META && META.start ? META.start : null;
+const AUTO_O = ND*NV*N, OEV_O = AUTO_O + (HAT_AUTO?N:0);
+const S = {view:'icon', layer:'eig', warm:META&&META.warm?META.warm:18, gef:true, center:null, radius:60, pick:false, maxFz:0, fzMode:HAT_AUTO?'auto':'oev',
+           sel:new Set(), cell:-1, top:[], geo:null};
+let D = null, LAND = null, A = null, layout = null, hover = -1, raster = null;
+
+function store(k,v){ try{ localStorage.setItem('campwetter3:'+k, JSON.stringify(v)); }catch(e){} }
+function recall(k){ try{ const v = localStorage.getItem('campwetter3:'+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+(function(){ const p = recall('settings'); if(!p) return;
+  if(VIEWS[p.view]) S.view=p.view; if(LAYERS[p.layer]) S.layer=p.layer; if(p.warm>=8&&p.warm<=30) S.warm=p.warm; if(typeof p.gef==='boolean') S.gef=p.gef;
+  if(p.radius>=10&&p.radius<=300) S.radius=p.radius; if(p.center&&isFinite(p.center.lat)&&isFinite(p.center.lon)) S.center=p.center;
+  if(p.maxFz>=0&&p.maxFz<=600) S.maxFz=p.maxFz; if(S.view==='um'&&!S.center) S.view='icon';
+  if(p.fzMode==='auto'&&HAT_AUTO||p.fzMode==='oev'&&HAT_OEV) S.fzMode=p.fzMode; })();
+const saveSettings = () => store('settings',{view:S.view,layer:S.layer,warm:S.warm,gef:S.gef,radius:S.radius,center:S.center,maxFz:S.maxFz,fzMode:S.fzMode});
+
+/* ---------- Bewertung ---------- */
+const clamp01 = x => x<0?0:x>1?1:x;
+function scoreDay(p, rel, tx, g, tn){
+  const r = clamp01(1 - Math.sqrt(Math.max(0, p-0.2)/6));                                  // Regen
+  const s = clamp01((rel-0.1)/0.7);                                                         // Sonne
+  const t = clamp01((tx-(S.warm-12))/12);                                                   // Max.-Temperatur
+  return r*(0.6*s + 0.4*t);
+}
+const classOf = sc => sc>=0.8?4 : sc>=0.6?3 : sc>=0.4?2 : sc>=0.2?1 : 0;
+// Kodierung der Bytes: Regen q=√mm·25, Sonne und mögliche Dauer q=h·10, Temperaturen q=(°C+30)·3, Böen q=km/h÷0.75, Fahrzeit q=min÷2, 255 = keine Daten
+// Reihenfolge je Tag: Regen, Sonne, mögliche Sonne, Maximum, Minimum, Böen, gefühltes Maximum, gefühltes Minimum; danach einmal die Fahrzeit
+function dayVals(i, j){
+  const o=j*NV*N+i, qp=D[o], qs=D[o+N], qd=D[o+2*N], qx=D[o+3*N], qn=D[o+4*N], qg=NV>5?D[o+5*N]:255, qfx=NV>7?D[o+6*N]:255, qfn=NV>7?D[o+7*N]:255,
+        qpg=NV>9?D[o+8*N]:255, qpt=NV>9?D[o+9*N]:255;
+  if(qp===255||qs===255||qx===255||qd===255||qd===0) return null;
+  const p=(qp/25)*(qp/25), sunH=qs/10, dl=qd/10, rel=clamp01(sunH/dl), g=qg===255?null:qg*0.75;
+  const txr=qx/3-30, tnr=qn===255?null:qn/3-30, txf=qfx===255?null:qfx/3-30, tnf=qfn===255?null:qfn/3-30;
+  const tx=S.gef&&txf!=null?txf:txr, tn=S.gef&&tnf!=null?tnf:tnr;
+  return {p, sunH, dl, rel, tx, tn, txr, tnr, txf, tnf, g, pg:qpg===255?null:qpg/200, pt:qpt===255?null:qpt/200, score:scoreDay(p,rel,tx,g,tn)};
+}
+const fzOf = i => { if(!HAT_FZ||i<0) return null; const q=D[(S.fzMode==='oev'?OEV_O:AUTO_O)+i]; return q===255?null:q*2; };
+function recompute(){
+  const days=[...S.sel].sort((a,b)=>a-b), sc=new Float32Array(N), p=new Float32Array(N), sun=new Float32Array(N), rel=new Float32Array(N), tx=new Float32Array(N),
+        g=new Float32Array(N).fill(NaN), tn=new Float32Array(N).fill(NaN), pg=new Float32Array(N).fill(NaN), pt=new Float32Array(N).fill(NaN), ok=new Uint8Array(N);
+  for(let i=0;i<N;i++){
+    if(LAND && !LAND[i]) continue;
+    let n=0, sp=0, ss=0, sd=0, st=0, ssc=0, gm=-1, tm=1e9, npg=0, spg=0, spt=0;
+    for(const j of days){ const v=dayVals(i,j); if(!v) continue; n++; sp+=v.p; ss+=v.sunH; sd+=v.dl; st+=v.tx; ssc+=v.score;
+      if(v.g!=null&&v.g>gm) gm=v.g; if(v.tn!=null&&v.tn<tm) tm=v.tn; if(v.pg!=null){ npg++; spg+=v.pg; spt+=v.pt; } }
+    if(!n) continue;
+    if(npg){ pg[i]=spg/npg; pt[i]=spt/npg; }
+    ok[i]=n; sc[i]=ssc/n; p[i]=sp; sun[i]=ss/n; rel[i]=sd?clamp01(ss/sd):0; tx[i]=st/n; if(gm>=0) g[i]=gm; if(tm<1e9) tn[i]=tm;
+  }
+  let dls=0, dln=0; for(let i=0;i<N;i+=7){ if(!ok[i]) continue; for(const j of days){ const v=dayVals(i,j); if(v){ dls+=v.dl; dln++; } } }
+  const Dm = dln ? dls/dln : 11, sunT=[0.2,0.4,0.6,0.8].map(f=>Math.max(1,Math.round(f*Dm)));
+  for(let k=1;k<4;k++) if(sunT[k]<=sunT[k-1]) sunT[k]=sunT[k-1]+1;
+  A = {days, sc, p, sun, rel, tx, g, tn, pg, pt, ok, sunT};
+}
+function binOf(i){
+  if(S.layer==='eig') return classOf(A.sc[i]);
+  if(S.layer==='reg'){ const p=A.p[i]; return p<0.2?0 : p<1?1 : p<5?2 : p<15?3 : 4; }
+  if(S.layer==='son'){ const h=A.sun[i], t=A.sunT; return h<t[0]?0 : h<t[1]?1 : h<t[2]?2 : h<t[3]?3 : 4; }
+  if(S.layer==='sic'){ const q=A.pg[i]; if(!isFinite(q)) return -1; return Math.min(4, Math.floor(q*5)); }
+  const t = A.tx[i]; if(!isFinite(t)) return -1;
+  let k=0; while(k<T_STUFEN.length && t>=T_STUFEN[k]) k++; return k;
+}
+function binLabels(){
+  if(S.layer==='eig') return CLASS;
+  if(S.layer==='reg') return ['trocken','bis 1 mm','1–5 mm','5–15 mm','über 15 mm'];
+  if(S.layer==='son'){ const t=A.sunT; return ['unter '+t[0]+' h',t[0]+'–'+t[1]+' h',t[1]+'–'+t[2]+' h',t[2]+'–'+t[3]+' h','über '+t[3]+' h'].map(x=>x+(x.startsWith('über')?' pro Tag':'')); }
+  if(S.layer==='sic') return ['unter 20 %','20–40 %','40–60 %','60–80 %','80–100 %'];
+  const T=T_STUFEN, m=x=>String(x).replace('-','−'); return ['unter '+m(T[0])+' °C'].concat(T.slice(1).map((v,k)=>m(T[k])+' bis '+m(v)+' °C'), ['ab '+m(T[T.length-1])+' °C']);
+}
+
+/* ---------- Datum, Text, Symbole ---------- */
+const parseDate = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+function dayLabel(j, long){ const d=parseDate(META.days[j].date); return WD[d.getDay()]+' '+d.getDate()+'.'+(long?' '+MON[d.getMonth()]:''); }
+function periodLabel(){
+  const ix=A.days; if(!ix.length) return '';
+  if(ix.length===1) return dayLabel(ix[0],true);
+  if(ix.every((v,k)=>k===0||v===ix[k-1]+1)) return dayLabel(ix[0])+' – '+dayLabel(ix[ix.length-1],true);
+  return ix.map(j=>dayLabel(j)).join(', ');
+}
+const f1 = x => x==null||!isFinite(x)?'–':x.toFixed(1), f0 = x => x==null||!isFinite(x)?'–':String(Math.round(x)).replace('-','−');
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ico = id => '<svg class="i"><use href="#i-'+id+'"/></svg>';
+const stat = (id, txt, title) => '<span class="stat" title="'+esc(title)+'">'+ico(id)+txt+'</span>';
+function fzText(m){ if(m==null) return ''; m=Math.round(m); return m<60?m+' min':Math.floor(m/60)+' h'+(m%60?' '+String(m%60).padStart(2,'0'):''); }
+function statsHtml(o, n){
+  return stat('rain', f1(o.p)+' mm', 'Regen'+(n>1?' in '+n+' Tagen':''))
+    + stat('sun', f1(o.sun)+' h'+(n>1?'/Tag':''), 'Sonnenschein, '+Math.round(o.rel*100)+' % der möglichen Dauer')
+    + stat('temp', 'max. '+f0(o.tx)+'°', (S.gef?'Gefühlte ':'')+'Max.-Temperatur')
+    + (o.fz!=null?stat(S.fzMode==='oev'?'train':'car', fzText(o.fz), (S.fzMode==='oev'?'Reisezeit mit dem ÖV':'Fahrzeit mit dem Auto')+' ab '+(START?START.name:'Start')):'')
+    + (isFinite(o.pg)?stat('shield', Math.round(o.pg*100)+' % sicher', 'Chance auf «Gut» oder besser laut Ensemble'+(isFinite(o.pt)?', Chance trocken '+Math.round(o.pt*100)+' %':'')):'');
+}
+function distKm(la1,lo1,la2,lo2){ const k=Math.cos((la1+la2)/2*Math.PI/180); return Math.hypot((lo2-lo1)*k*111.2,(la2-la1)*111.2); }
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const ORTE = ORTE_RAW.map(o=>({name:o[0], lat:o[1], lon:o[2], pop:o[3], cc:o[4]||''}));
+const BIG = CITIES.map(c=>({name:c[0], lat:c[1], lon:c[2]})).concat(ORTE.filter(o=>o.pop>=10000));
+const SUCHE = (()=>{ const out=CITIES.map(c=>({name:c[0], lat:c[1], lon:c[2], pop:[0,2e6,3e5,6e4][c[3]], cc:''}));
+  for(const o of ORTE){ if(!out.some(q=>q.cc===''&&norm(q.name)===norm(o.name)&&Math.abs(q.lat-o.lat)<0.1&&Math.abs(q.lon-o.lon)<0.15)) out.push(o); }
+  return out.map(o=>Object.assign(o,{key:norm(o.name)})); })();
+function direction(la1,lo1,la2,lo2){ const k=Math.cos(la1*Math.PI/180), ang=Math.atan2((lo2-lo1)*k, la2-la1)*180/Math.PI; return ['N','NO','O','SO','S','SW','W','NW'][Math.round(((ang+360)%360)/45)%8]; }
+function placeName(lat,lon){
+  let near=null, nd=1e9; for(const o of ORTE){ if(Math.abs(o.lat-lat)>0.05) continue; const d=distKm(lat,lon,o.lat,o.lon); if(d<nd){ nd=d; near=o; } }
+  if(near && nd<3) return 'bei '+near.name;
+  let best=null,bd=1e9; for(const c of BIG){ const d=distKm(lat,lon,c.lat,c.lon); if(d<bd){bd=d;best=c;} }
+  if(bd<4) return 'bei '+best.name;
+  return Math.round(bd)+' km '+direction(best.lat,best.lon,lat,lon)+' von '+best.name;
+}
+function suche(q){
+  const k=norm(q.trim()); if(k.length<2) return [];
+  const hits=[]; for(const o of SUCHE){ const pos=o.key.indexOf(k); if(pos<0) continue; const ws = pos===0 || /[\s\-'(]/.test(o.key[pos-1]); hits.push([pos===0?0:ws?1:2, -o.pop, o]); }
+  hits.sort((a,b)=>a[0]-b[0]||a[1]-b[1]); return hits.slice(0,8).map(h=>h[2]);
+}
+const cellLat = i => G.lat0+(Math.floor(i/G.nx)+0.5)*G.dLat, cellLon = i => G.lon0+(i%G.nx+0.5)*G.dLon;
+function viewBox(){
+  const full={lon:[G.lon0,G.lon0+G.nx*G.dLon], lat:[G.lat0,G.lat0+G.ny*G.dLat]};
+  if(S.view==='um' && S.center){ const dy=S.radius/111.2*1.12, dx=dy/Math.cos(S.center.lat*Math.PI/180)*1.25, c=S.center;
+    return {lon:[Math.max(full.lon[0],c.lon-dx),Math.min(full.lon[1],c.lon+dx)], lat:[Math.max(full.lat[0],c.lat-dy),Math.min(full.lat[1],c.lat+dy)]}; }
+  return VIEWS[S.view].box || full;
+}
+function viewCfg(){
+  if(S.view!=='um') return VIEWS[S.view];
+  const R=S.radius; return {block:R<=40?2:R<=120?3:R<=200?4:6, spacing:Math.max(6,Math.min(90,R/4)), labelRank:R<=80?3:2};
+}
+
+/* ---------- Landesgrenzen (TopoJSON, eigener Decoder) ---------- */
+function decodeTopo(topo){
+  const tr=topo.transform, sx=tr?tr.scale[0]:1, sy=tr?tr.scale[1]:1, tx=tr?tr.translate[0]:0, ty=tr?tr.translate[1]:0;
+  const arcs=topo.arcs.map(a=>{ let x=0,y=0; return a.map(p=>{ if(tr){ x+=p[0]; y+=p[1]; return [x*sx+tx,y*sy+ty]; } return [p[0],p[1]]; }); });
+  const ring = ids => { const out=[]; ids.forEach((id,n)=>{ const a = id<0 ? arcs[~id].slice().reverse() : arcs[id]; for(let q=n?1:0;q<a.length;q++) out.push(a[q]); }); return out; };
+  const rings = g => !g ? [] : g.type==='GeometryCollection' ? g.geometries.flatMap(rings) : g.type==='Polygon' ? g.arcs.map(ring) : g.type==='MultiPolygon' ? g.arcs.flatMap(p=>p.map(ring)) : [];
+  const used = new Set(); (function walk(g){ if(!g) return; if(g.geometries) g.geometries.forEach(walk); else if(g.arcs) JSON.stringify(g.arcs).match(/-?\d+/g).forEach(v=>{ const n=+v; used.add(n<0?~n:n); }); })(topo.objects.countries||topo.objects.land);
+  const bbox = pts => { let a=1e9,b=1e9,c=-1e9,d=-1e9; for(const p of pts){ if(p[0]<a)a=p[0]; if(p[0]>c)c=p[0]; if(p[1]<b)b=p[1]; if(p[1]>d)d=p[1]; } return [a,b,c,d]; };
+  const full=[G.lon0-1,G.lat0-1,G.lon0+G.nx*G.dLon+1,G.lat0+G.ny*G.dLat+1], near=b=>!(b[2]<full[0]||b[0]>full[2]||b[3]<full[1]||b[1]>full[3]);
+  return {land: rings(topo.objects.land||topo.objects.countries).map(r=>({pts:r,bb:bbox(r)})).filter(r=>near(r.bb)),
+          lines: [...used].map(i=>({pts:arcs[i],bb:bbox(arcs[i])})).filter(l=>near(l.bb))};
+}
+function buildLandMask(){
+  if(!S.geo || !S.geo.land.length){ LAND=null; return; }
+  const c=document.createElement('canvas'); c.width=G.nx; c.height=G.ny; const x=c.getContext('2d',{willReadFrequently:true});
+  x.fillStyle='#000'; x.beginPath();
+  for(const r of S.geo.land){ r.pts.forEach((p,i)=>{ const px=(p[0]-G.lon0)/G.dLon, py=(p[1]-G.lat0)/G.dLat; i?x.lineTo(px,py):x.moveTo(px,py); }); x.closePath(); }
+  x.fill('evenodd');
+  const im=x.getImageData(0,0,G.nx,G.ny).data; LAND=new Uint8Array(N); let n=0;
+  for(let i=0;i<N;i++){ if(im[i*4+3]>100){ LAND[i]=1; n++; } }
+  if(n<N*0.05) LAND=null;
+}
+
+/* ---------- Karte ---------- */
+function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function rampOf(l){ return RAMPS[l] || [0,1,2,3,4].map(k=>css('--'+l+'-'+k)); }
+function rgb(hex){ const h=hex.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function paintRaster(){
+  if(!raster){ raster=document.createElement('canvas'); raster.width=G.nx; raster.height=G.ny; }
+  const x=raster.getContext('2d'), im=x.createImageData(G.nx,G.ny), d=im.data, ramp=rampOf(S.layer).map(rgb);
+  for(let iy=0;iy<G.ny;iy++){ const row=(G.ny-1-iy)*G.nx*4;
+    for(let ix=0;ix<G.nx;ix++){ const i=iy*G.nx+ix; if(!A.ok[i]) continue; const k=binOf(i); if(k<0) continue; const c=ramp[k], o=row+ix*4; d[o]=c[0]; d[o+1]=c[1]; d[o+2]=c[2]; d[o+3]=255; } }
+  x.putImageData(im,0,0);
+}
+function computeLayout(){
+  const b=viewBox(), W=Math.max(200,$('mapwrap').clientWidth), k=Math.cos((b.lat[0]+b.lat[1])/2*Math.PI/180);
+  const sc=W/((b.lon[1]-b.lon[0])*k), H=Math.round((b.lat[1]-b.lat[0])*sc);
+  return {W,H,sc,k,b,x:lon=>(lon-b.lon[0])*k*sc, y:lat=>(b.lat[1]-lat)*sc, lon:x=>x/(k*sc)+b.lon[0], lat:y=>b.lat[1]-y/sc};
+}
+function draw(){
+  if(!G) return; const cv=$('map'); layout=computeLayout(); const L=layout, b=L.b, dpr=window.devicePixelRatio||1;
+  cv.width=Math.round(L.W*dpr); cv.height=Math.round(L.H*dpr); cv.style.height=L.H+'px';
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  const hit=q=>!(q[2]<b.lon[0]||q[0]>b.lon[1]||q[3]<b.lat[0]||q[1]>b.lat[1]);
+  ctx.fillStyle=css(S.geo?'--water':'--land'); ctx.fillRect(0,0,L.W,L.H);
+  if(S.geo){ ctx.fillStyle=css('--land'); ctx.beginPath();
+    for(const r of S.geo.land){ if(!hit(r.bb)) continue; r.pts.forEach((p,i)=>{ const x=L.x(p[0]),y=L.y(p[1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.closePath(); }
+    ctx.fill('evenodd'); }
+  if(A && raster){ ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(raster, (b.lon[0]-G.lon0)/G.dLon, G.ny-(b.lat[1]-G.lat0)/G.dLat, (b.lon[1]-b.lon[0])/G.dLon, (b.lat[1]-b.lat[0])/G.dLat, 0, 0, L.W, L.H); }
+  if(S.geo){ ctx.strokeStyle=css('--geo'); ctx.lineWidth=1; ctx.lineJoin='round'; ctx.beginPath();
+    for(const l of S.geo.lines){ if(!hit(l.bb)) continue; l.pts.forEach((p,i)=>{ const x=L.x(p[0]),y=L.y(p[1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); }
+    ctx.stroke(); }
+  const ink=css('--ink'), surf=css('--surface'), acc=css('--accent'), accInk=css('--accent-ink');
+  if(S.center){ const c=S.center, cx=L.x(c.lon), cy=L.y(c.lat), ry=S.radius/111.2*L.sc, rx=S.radius/(111.2*Math.cos(c.lat*Math.PI/180))*L.k*L.sc;
+    ctx.save(); ctx.globalAlpha=0.55; ctx.fillStyle=surf; ctx.beginPath(); ctx.rect(0,0,L.W,L.H); ctx.ellipse(cx,cy,rx,ry,0,0,2*Math.PI); ctx.fill('evenodd'); ctx.restore();
+    ctx.save(); ctx.setLineDash([6,4]); ctx.strokeStyle=ink; ctx.lineWidth=1.5; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,2*Math.PI); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(Math.PI/4); ctx.fillStyle=ink; ctx.strokeStyle=surf; ctx.lineWidth=2; ctx.fillRect(-5,-5,10,10); ctx.strokeRect(-5,-5,10,10); ctx.restore(); }
+  if(START && HAT_FZ){ const sx=L.x(START.lon), sy=L.y(START.lat); if(sx>=0&&sx<=L.W&&sy>=0&&sy<=L.H){ ctx.beginPath(); ctx.arc(sx,sy,6,0,6.3); ctx.fillStyle=surf; ctx.fill(); ctx.lineWidth=2.5; ctx.strokeStyle=acc; ctx.stroke(); } }
+  ctx.font='600 12px "Nunito Sans", system-ui, sans-serif'; ctx.textBaseline='middle'; ctx.lineJoin='round';
+  const boxes=[], maxRank=L.W<520?Math.max(1,viewCfg().labelRank-1):viewCfg().labelRank;
+  CITIES.filter(c=>c[3]<=maxRank&&c[2]>b.lon[0]&&c[2]<b.lon[1]&&c[1]>b.lat[0]&&c[1]<b.lat[1]).sort((a,c)=>a[3]-c[3]).forEach(c=>{
+    const x=L.x(c[2]), y=L.y(c[1]), tw=ctx.measureText(c[0]).width; let lx=x+6; if(lx+tw>L.W-4) lx=x-6-tw;
+    const q=[lx-2,y-8,lx+tw+2,y+8]; if(q[0]<2||q[1]<2||q[3]>L.H-2) return;
+    if(boxes.some(o=>!(q[2]<o[0]||q[0]>o[2]||q[3]<o[1]||q[1]>o[3]))) return; boxes.push(q);
+    ctx.fillStyle=ink; ctx.strokeStyle=surf; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(x,y,2.6,0,6.3); ctx.fill(); ctx.stroke();
+    ctx.lineWidth=3; ctx.strokeText(c[0],lx,y); ctx.fillText(c[0],lx,y); });
+  ctx.font='800 12px Nunito, system-ui, sans-serif'; ctx.textAlign='center';
+  S.top.forEach((t,r)=>{ const cx=L.x(t.lon), cy=L.y(t.lat);
+    ctx.beginPath(); ctx.arc(cx,cy,10,0,6.3); ctx.fillStyle=acc; ctx.fill(); ctx.strokeStyle=surf; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle=accInk; ctx.fillText(r+1,cx,cy+0.5); });
+  ctx.textAlign='left';
+  [[hover,1.5],[S.cell,2.5]].forEach(([i,lw])=>{ if(i<0) return; const cx=L.x(cellLon(i)), cy=L.y(cellLat(i)), w=Math.max(8,G.dLon*L.k*L.sc), h=Math.max(8,G.dLat*L.sc);
+    ctx.strokeStyle=surf; ctx.lineWidth=lw+2; ctx.strokeRect(cx-w/2,cy-h/2,w,h); ctx.strokeStyle=ink; ctx.lineWidth=lw; ctx.strokeRect(cx-w/2,cy-h/2,w,h); });
+}
+
+/* ---------- Rangliste, Empfehlung, Detail ---------- */
+function pill(sc){ const k=classOf(sc); return '<span class="pill"><i style="background:var(--eig-'+k+')"></i>'+CLASS[k]+'</span>'; }
+function rankBlocks(){
+  const V=viewCfg(), B=V.block, b=viewBox(), cand=[], C=S.center, fzOn=HAT_FZ&&S.maxFz>0;
+  for(let by=0;by<G.ny;by+=B) for(let bx=0;bx<G.nx;bx+=B){
+    const lat=G.lat0+(by+B/2)*G.dLat, lon=G.lon0+(bx+B/2)*G.dLon; if(lon<b.lon[0]||lon>b.lon[1]||lat<b.lat[0]||lat>b.lat[1]) continue;
+    if(C && distKm(lat,lon,C.lat,C.lon)>S.radius) continue;
+    let n=0,sc=0,p=0,sun=0,rel=0,tx=0,g=-1,tn=1e9,best=-1,bs=-1,npg=0,pg=0,pt=0;
+    for(let iy=by;iy<Math.min(G.ny,by+B);iy++) for(let ix=bx;ix<Math.min(G.nx,bx+B);ix++){ const i=iy*G.nx+ix; if(!A.ok[i]) continue;
+      n++; sc+=A.sc[i]; p+=A.p[i]; sun+=A.sun[i]; rel+=A.rel[i]; tx+=A.tx[i]; if(A.g[i]>g) g=A.g[i]; if(A.tn[i]<tn) tn=A.tn[i]; if(A.sc[i]>bs){ bs=A.sc[i]; best=i; } if(isFinite(A.pg[i])){ npg++; pg+=A.pg[i]; pt+=A.pt[i]; } }
+    if(n<B*B/2) continue;
+    const fz=fzOf(best); if(fzOn && (fz==null || fz>S.maxFz)) continue;
+    cand.push({lat:cellLat(best),lon:cellLon(best),sc:sc/n,p:p/n,sun:sun/n,rel:rel/n,tx:tx/n,g,tn:tn<1e9?tn:NaN,best,fz,pg:npg?pg/npg:NaN,pt:npg?pt/npg:NaN});
+  }
+  // Bei fast gleicher Eignung gewinnt die sicherere Gegend
+  cand.sort((x,y)=>(Math.round(y.sc*20)-Math.round(x.sc*20))||((isFinite(y.pg)?y.pg:0)-(isFinite(x.pg)?x.pg:0))||y.sc-x.sc||(x.fz??1e9)-(y.fz??1e9));
+  const top=[]; for(const c of cand){ if(top.every(t=>distKm(c.lat,c.lon,t.lat,t.lon)>=V.spacing)) top.push(c); if(top.length>=8) break; }
+  return top;
+}
+function renderRank(){
+  const ol=$('rank'); ol.textContent=''; S.top=A?rankBlocks():[]; $('rankEmpty').hidden=S.top.length>0;
+  if(A && !S.top.length) $('rankEmpty').textContent=S.center||S.maxFz?'Mit diesem Umkreis oder dieser Fahrzeit gibt es keine Gegend. Vergrössere die Auswahl.':'Für diese Auswahl gibt es keine Daten.';
+  const km=Math.round(viewCfg().block*G.dLat*111.2);
+  $('rankNote').textContent=S.top.length?'Jeweils das Mittel über rund '+km+' × '+km+' km. Ein Klick zeigt den besten Punkt darin.':'';
+  S.top.forEach((t,r)=>{ const li=document.createElement('li'), bt=document.createElement('button'); bt.type='button'; bt.setAttribute('aria-current', t.best===S.cell?'true':'false');
+    const ex=S.center?Math.round(distKm(S.center.lat,S.center.lon,t.lat,t.lon))+' km '+direction(S.center.lat,S.center.lon,t.lat,t.lon)+' von '+S.center.name:'';
+    bt.innerHTML='<span class="no">'+(r+1)+'</span><span class="nm">'+esc(placeName(t.lat,t.lon))+'</span>'+pill(t.sc)
+      +'<span class="stats">'+statsHtml(t,A.days.length)+'</span>'+(ex?'<span class="ex">'+esc(ex)+'</span>':'');
+    bt.onclick=()=>{ S.cell=t.best; renderAll(false); if(innerWidth<980) $('detailCard').scrollIntoView({behavior:'smooth',block:'start'}); }; li.appendChild(bt); ol.appendChild(li); });
+}
+function renderHero(){
+  const t=S.top[0], period=periodLabel();
+  $('heroEyebrow').textContent='Beste Wahl · '+period+(S.center?' · '+S.radius+' km um '+S.center.name:'')+(HAT_FZ&&S.maxFz?' · bis '+fzText(S.maxFz)+(S.fzMode==='oev'?' mit dem ÖV':' Fahrt'):'');
+  if(!t){ $('heroName').textContent='Keine passende Gegend'; $('heroWhere').textContent='Wähle mehr Tage, einen grösseren Umkreis oder eine längere Fahrzeit.'; $('heroStats').innerHTML=''; $('heroBtn').hidden=true; return; }
+  $('heroName').textContent=placeName(t.lat,t.lon);
+  const k=classOf(t.sc), trend=A.days.some(j=>META.days[j].trend);
+  const sich=isFinite(t.pg)?' Chance auf «Gut» oder besser: '+Math.round(t.pg*100)+' %'+(t.pg<0.5?', also noch unsicher.':'.'):'';
+  $('heroWhere').innerHTML=pill(t.sc)+'<span>'+(trend?'Enthält Trendtage, darum noch unsicher.':k===4?'Trocken, sonnig und angenehm.':k===3?'Gute Bedingungen.':'Die beste Gegend in deiner Auswahl.')+sich+'</span>';
+  $('heroStats').innerHTML=statsHtml(t,A.days.length); $('heroBtn').hidden=false;
+}
+function renderDetail(){
+  const el=$('detail'), i=S.cell;
+  if(i<0||!D){ el.innerHTML='<p class="empty">Klicke auf die Karte oder auf eine Gegend in der Rangliste.</p>'; return; }
+  const lat=cellLat(i), lon=cellLon(i), fz=fzOf(i);
+  const gef=(r,f)=>f!=null&&Math.round(f)<Math.round(r)?' <span class="gef">(gef. '+f0(f)+'°)</span>':'';
+  let rows='';
+  META.days.forEach((d,j)=>{ const v=dayVals(i,j);
+    rows+='<li'+(S.sel.has(j)?' class="on"':'')+'><div class="dh"><b>'+dayLabel(j)+'</b><small>'+esc(d.model)+(d.trend?', Trend':'')+'</small>'+(v?pill(v.score):'')+'</div>'
+      +(v?'<div class="stats">'+stat('rain',f1(v.p)+' mm','Regen')+stat('sun',f1(v.sunH)+' h · '+Math.round(v.rel*100)+' %','Sonnenschein')
+          +stat('temp','max. '+f0(v.txr)+'°'+gef(v.txr,v.txf),'Max.-Temperatur')
+          +(v.pg!=null?stat('shield',Math.round(v.pg*100)+' % sicher','Ensemble: Chance auf «Gut» oder besser')+stat('rain',Math.round(v.pt*100)+' % trocken','Ensemble: Chance auf unter 0.5 mm Regen'):'')+'</div>':'<span class="meta">keine Daten</span>')+'</li>'; });
+  el.innerHTML='<p style="margin:0;font-weight:700;font-size:16px">'+esc(placeName(lat,lon))+'</p>'
+    +'<p class="meta">'+lat.toFixed(2)+'° N, '+lon.toFixed(2)+'° O'+(fz!=null?' · '+fzText(fz)+(S.fzMode==='oev'?' mit dem ÖV':' Fahrt')+' ab '+esc(START.name):'')
+    +' · <a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat='+lat.toFixed(4)+'&mlon='+lon.toFixed(4)+'#map=12/'+lat.toFixed(4)+'/'+lon.toFixed(4)+'">Auf Karte öffnen</a></p>'
+    +'<ul class="days">'+rows+'</ul><p class="meta">«gef.» = gefühlt mit Wind.</p>';
+}
+function chips(id, items, onPick){
+  const el=$(id); el.textContent='';
+  items.forEach(it=>{ const b=document.createElement('button'); b.type='button'; b.innerHTML=it.html; b.setAttribute('aria-pressed', it.on?'true':'false'); if(it.cls) b.className=it.cls; b.onclick=()=>onPick(it.key); el.appendChild(b); });
+}
+function renderControls(){
+  const today=new Date().toDateString();
+  renderDays();
+  chips('layers', Object.keys(LAYERS).filter(k=>k!=='sic'||(META&&META.ens)).map(k=>({key:k,html:LAYERS[k].label,on:S.layer===k})), k=>{ S.layer=k; saveSettings(); renderAll(false); });
+  chips('views', Object.keys(VIEWS).filter(k=>k!=='um'||S.center).map(k=>({key:k,html:VIEWS[k].label,on:S.view===k})), k=>{ S.view=k; saveSettings(); renderAll(false); });
+  $('warm').value=S.warm; $('warmOut').textContent=S.warm+' °C'; $('gef').checked=S.gef;
+  $('radRow').hidden=!S.center; $('rad').value=S.radius; $('radOut').textContent=S.radius+' km'; $('clearBtn').hidden=!S.center;
+  if(S.center && document.activeElement!==$('ortq')) $('ortq').value=S.center.name;
+  $('pickBtn').setAttribute('aria-pressed', S.pick?'true':'false'); $('pickHint').hidden=!S.pick; $('map').style.cursor=S.pick?'crosshair':'pointer';
+  $('fzRow').hidden=!HAT_FZ;
+  if(HAT_FZ){ $('fzLbl').textContent='Reisezeit ab '+START.name; $('fzHint').textContent='Der Startort '+START.name+' ist im Notebook festgelegt (START_ORT). Die Ortssuche oben setzt nur den Umkreis.';
+    $('fzModes').hidden=!(HAT_AUTO&&HAT_OEV);
+    chips('fzModes', [['auto',ico('car')+'Auto'],['oev',ico('train')+'ÖV']].filter(([k])=>k==='auto'?HAT_AUTO:HAT_OEV).map(([k,l])=>({key:k,html:l,on:S.fzMode===k})), k=>{ S.fzMode=k; saveSettings(); renderAll(false); });
+    const opts=[0,60,90,120,180,240,300].filter(m=>m<=Math.max(60,(META.fzMax||240)));
+    chips('fzChips', opts.map(m=>({key:m, on:S.maxFz===m, html:m?'bis '+fzText(m):'egal'})), m=>{ S.maxFz=m; saveSettings(); renderAll(false); }); }
+}
+function renderDays(){
+  const el=$('days'), today=new Date().toDateString(); el.textContent='';
+  META.days.forEach((d,j)=>{ const dt=parseDate(d.date), b=document.createElement('button'); b.type='button'; b.dataset.j=j;
+    const on=S.sel.has(j); b.className=[on?'on':'', on&&!S.sel.has(j-1)?'first':'', on&&!S.sel.has(j+1)?'last':'', d.trend?'trend':''].join(' ');
+    b.setAttribute('aria-pressed', on?'true':'false'); b.title=(d.trend?'Trend (IFS): ':'')+dayLabel(j,true)+(d.from!=null?', ab '+d.from+' Uhr':'');
+    b.innerHTML='<small>'+(dt.toDateString()===today?'Heute':WD[dt.getDay()])+'</small><b>'+dt.getDate()+'.</b><em>'+(d.from!=null?'ab '+d.from:d.trend?'Trend':'')+'</em>';
+    el.appendChild(b); });
+}
+const DRAG = {on:false, a:-1};
+function setRange(a,b){ const lo=Math.min(a,b), hi=Math.max(a,b); S.sel=new Set(); for(let j=lo;j<=hi;j++) S.sel.add(j); renderDays(); }
+function dayAt(ev){ const t=document.elementFromPoint(ev.clientX, ev.clientY), b=t&&t.closest?t.closest('#days [data-j]'):null; return b?+b.dataset.j:-1; }
+$('days').addEventListener('pointerdown', ev=>{ const j=dayAt(ev); if(j<0) return; ev.preventDefault();
+  if(ev.shiftKey && S.sel.size){ setRange(Math.min(...S.sel), j); renderAll(true); return; }
+  DRAG.on=true; DRAG.a=j; setRange(j,j); });
+addEventListener('pointermove', ev=>{ if(!DRAG.on) return; const j=dayAt(ev); if(j>=0) setRange(DRAG.a, j); });
+addEventListener('pointerup', ()=>{ if(!DRAG.on) return; DRAG.on=false; renderAll(true); });
+addEventListener('pointercancel', ()=>{ if(!DRAG.on) return; DRAG.on=false; renderAll(true); });
+$('days').addEventListener('keydown', ev=>{ const b=ev.target.closest('[data-j]'); if(!b||(ev.key!=='Enter'&&ev.key!==' ')) return; ev.preventDefault(); const j=+b.dataset.j;
+  if(ev.shiftKey && S.sel.size) setRange(Math.min(...S.sel), j); else setRange(j,j); renderAll(true); });
+function renderAll(recalc){
+  renderControls(); if(!D) return;
+  if(recalc||!A) recompute();
+  paintRaster(); renderRank(); draw(); renderDetail(); renderHero();
+  const period=periodLabel(); $('mapTitle').textContent=LAYERS[S.layer].title; $('mapSub').textContent=period+(A.days.some(j=>META.days[j].trend)?' · enthält Trendtage':'');
+  $('rankTitle').textContent='Beste Gegenden'+(S.center?' im Umkreis':'');
+  const rp=rampOf(S.layer); $('legend').innerHTML=binLabels().map((t,k)=>'<span><i class="sw" style="background:'+rp[k]+'"></i>'+esc(t)+'</span>').join('');
+}
+function fail(msg){ const el=$('status'); el.hidden=false; el.textContent=msg; $('heroEyebrow').textContent='Fehler'; $('heroName').textContent='Das Dashboard konnte nicht starten'; $('heroWhere').textContent=msg; }
+
+/* ---------- Interaktion ---------- */
+function cellAt(ev){
+  if(!layout||!A) return -1; const r=$('map').getBoundingClientRect(), ix=Math.floor((layout.lon(ev.clientX-r.left)-G.lon0)/G.dLon), iy=Math.floor((layout.lat(ev.clientY-r.top)-G.lat0)/G.dLat);
+  if(ix<0||iy<0||ix>=G.nx||iy>=G.ny) return -1; const i=iy*G.nx+ix; return A.ok[i]?i:-1;
+}
+function showTip(i, ev){
+  const tip=$('tip'); if(i<0){ tip.hidden=true; return; }
+  const wrap=$('mapwrap').getBoundingClientRect();
+  tip.innerHTML='<b>'+esc(placeName(cellLat(i),cellLon(i)))+'</b>'+pill(A.sc[i])
+    +'<div class="stats">'+statsHtml({p:A.p[i],sun:A.sun[i],rel:A.rel[i],tx:A.tx[i],tn:A.tn[i],g:A.g[i],fz:fzOf(i),pg:A.pg[i],pt:A.pt[i]},A.days.length)+'</div>';
+  tip.hidden=false; const tw=tip.offsetWidth, th=tip.offsetHeight; let x=ev.clientX-wrap.left+14, y=ev.clientY-wrap.top+14;
+  if(x+tw>wrap.width-4) x=ev.clientX-wrap.left-tw-14; if(y+th>wrap.height-4) y=ev.clientY-wrap.top-th-14;
+  tip.style.left=Math.max(4,x)+'px'; tip.style.top=Math.max(4,y)+'px';
+}
+function setCenter(name, lat, lon){ S.center={name, lat:+lat.toFixed(4), lon:+lon.toFixed(4)}; S.view='um'; S.cell=-1; S.pick=false; $('ortq').value=name; $('sugg').hidden=true; saveSettings(); renderAll(false); }
+function showSugg(){
+  const box=$('sugg'), hits=suche($('ortq').value); box.textContent='';
+  if(!hits.length){ box.hidden=true; return; }
+  hits.forEach(o=>{ const b=document.createElement('button'); b.type='button'; b.setAttribute('role','option');
+    b.innerHTML='<span>'+esc(o.name)+'</span><small>'+esc(o.cc)+'</small>'; b.onmousedown=e=>e.preventDefault(); b.onclick=()=>setCenter(o.name,o.lat,o.lon); box.appendChild(b); });
+  box.hidden=false;
+}
+$('map').addEventListener('pointermove',ev=>{ if(ev.pointerType==='touch') return; const i=cellAt(ev); if(i!==hover){ hover=i; draw(); } showTip(i,ev); });
+$('map').addEventListener('pointerleave',()=>{ hover=-1; $('tip').hidden=true; draw(); });
+$('map').addEventListener('click',ev=>{
+  if(S.pick && layout){ const r=$('map').getBoundingClientRect(), lat=layout.lat(ev.clientY-r.top), lon=layout.lon(ev.clientX-r.left); setCenter(placeName(lat,lon), lat, lon); return; }
+  const i=cellAt(ev); if(i<0) return; S.cell=i; $('tip').hidden=true; renderAll(false); });
+$('ortq').addEventListener('input', showSugg);
+$('ortq').addEventListener('focus', showSugg);
+$('ortq').addEventListener('blur', ()=>setTimeout(()=>{ $('sugg').hidden=true; },150));
+$('ortq').addEventListener('keydown', e=>{ if(e.key==='Enter'){ const h=suche($('ortq').value); if(h.length) setCenter(h[0].name,h[0].lat,h[0].lon); } else if(e.key==='Escape') $('sugg').hidden=true; });
+$('pickBtn').addEventListener('click', ()=>{ S.pick=!S.pick; renderControls(); });
+$('clearBtn').addEventListener('click', ()=>{ S.center=null; S.pick=false; if(S.view==='um') S.view='icon'; $('ortq').value=''; saveSettings(); renderAll(false); });
+$('rad').addEventListener('input', e=>{ S.radius=+e.target.value; saveSettings(); renderAll(false); });
+$('warm').addEventListener('input',e=>{ S.warm=+e.target.value; saveSettings(); renderAll(true); });
+$('gef').addEventListener('change', e=>{ S.gef=e.target.checked; saveSettings(); renderAll(true); });
+$('heroBtn').addEventListener('click', ()=>{ const t=S.top[0]; if(!t) return; S.cell=t.best; renderAll(false); $('detailCard').scrollIntoView({behavior:'smooth',block:'start'}); });
+new ResizeObserver(()=>draw()).observe($('mapwrap'));
+/* Tag- und Nachtdesign: automatisch nach Sonnenauf- und -untergang, oder fest gewählt */
+let THEME='auto'; try{ THEME=localStorage.getItem('campwetter3:theme')||'auto'; }catch(e){}
+function sunTimes(){ const lat=START?START.lat:46.8, lon=START?START.lon:8.2, d=new Date(), n=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);
+  const B=2*Math.PI*(n-81)/364, eot=9.87*Math.sin(2*B)-7.53*Math.cos(B)-1.5*Math.sin(B), dek=23.45*Math.sin(2*Math.PI*(284+n)/365)*Math.PI/180, phi=lat*Math.PI/180;
+  const H=Math.acos(Math.max(-1,Math.min(1,(Math.sin(-0.833*Math.PI/180)-Math.sin(phi)*Math.sin(dek))/(Math.cos(phi)*Math.cos(dek)))))*180/Math.PI/15;
+  const noon=12-lon/15-eot/60-d.getTimezoneOffset()/60; return [noon-H, noon+H]; }
+function applyTheme(){ let dark=THEME==='dark'; if(THEME==='auto'){ const d=new Date(), h=d.getHours()+d.getMinutes()/60, [a,b]=sunTimes(); dark=h<a||h>=b; }
+  const want=dark?'dark':'light'; if(document.documentElement.getAttribute('data-theme')!==want){ document.documentElement.setAttribute('data-theme',want); if(D&&A){ paintRaster(); draw(); } }
+  chips('themes', [['auto','Auto'],['light',ico('sun')+'Tag'],['dark',ico('moon')+'Nacht']].map(([k,l])=>({key:k,html:l,on:THEME===k})), k=>{ THEME=k; try{ localStorage.setItem('campwetter3:theme',k); }catch(e){} applyTheme(); }); }
+applyTheme(); setInterval(applyTheme, 5*60*1000);
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>draw());
+
+async function inflate(b64){
+  const bin=atob(b64), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+  return new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+}
+(async function start(){
+  if(!META){ fail('Diese Datei enthält noch keine Daten. Sie wird vom Colab-Notebook erzeugt.'); return; }
+  const r=META.runs||{}; $('stand').textContent='Stand '+META.created+' · Prognose: '+Object.keys(r).map(k=>k+' '+r[k]).join(' · ');
+  $('srcNote').innerHTML='<b>Daten:</b> MeteoSchweiz '+esc(Object.keys(r).filter(k=>k.indexOf('ICON')===0).join(' und '))+', Kontrolllauf, direkt aus den offenen Daten (Quelle: MeteoSchweiz). Raster von rund '+Math.round(G.dLat*111.2*10)/10+' km. Heute zählt nur der Rest des Tages ab Modellstart. Bergschatten sind beim Sonnenanteil nicht abgezogen. Erstellt am '+esc(META.created)+'. Grenzen: Natural Earth. Ortsnamen: GeoNames.'
+    +(META.ens?' <b>Ensemble:</b> '+esc(Object.keys(META.ens).map(k=>k+' mit '+META.ens[k]+' Läufen').join(', '))+'.':'')+(HAT_AUTO?' <b>Fahrzeit Auto:</b> openrouteservice ab '+esc(START.name)+', ohne Verkehr, zum nächsten Ort plus Reststrecke geschätzt.':'')
+    +(HAT_OEV?' <b>Reisezeit ÖV:</b> opentransportdata.swiss (OJP), schnellste Verbindung ab '+esc(START.name)+' zum nächsten Schweizer Ort, plus Fussweg geschätzt. Nur Schweiz.':'')
+    +(META.days.some(d=>d.trend)?' <b>Trend:</b> Die gestrichelten Tage stammen aus dem globalen Modell IFS von ECMWF (rund 25 km, CC BY 4.0) und sind deutlich unsicherer. Ein Tag zählt dort von 00 bis 24 UTC. Die Sonne ist aus der Globalstrahlung geschätzt, die Temperatur mit dem Geländemuster von ICON verfeinert.':'');
+  if(META.ens){ $('ensNote').hidden=false; }
+  const q=['Wetterdaten: <a href="https://www.meteoschweiz.admin.ch" target="_blank" rel="noopener">MeteoSchweiz</a> (ICON-CH1, ICON-CH2)'
+      +(META.days.some(d=>d.trend)?' und <a href="https://www.ecmwf.int" target="_blank" rel="noopener">ECMWF</a> (IFS)':'')+', Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>',
+    'Grenzen: Natural Earth', 'Ortsnamen: GeoNames (CC BY 4.0)'];
+  if(HAT_AUTO) q.push('Fahrzeit Auto: openrouteservice, Kartendaten © OpenStreetMap-Mitwirkende');
+  if(HAT_OEV) q.push('ÖV-Verbindungen: opentransportdata.swiss');
+  $('quellen').innerHTML='Quellen · '+q.join(' · ');
+  const wd=META.days.map(d=>parseDate(d.date).getDay()), sa=wd.indexOf(6);
+  if(sa>=0 && wd[sa+1]===0) S.sel=new Set([sa,sa+1]); else { const j=META.days.findIndex(d=>d.from==null); S.sel=new Set([j>=0?j:0]); }
+  renderControls();
+  try{
+    if(typeof DecompressionStream==='undefined') throw new Error('Dieser Browser ist zu alt, um die Daten zu entpacken. Bitte eine aktuelle Version von Chrome, Edge, Firefox oder Safari verwenden.');
+    D=await inflate(DATA_B64);
+    const soll=ND*NV*N+(HAT_AUTO?N:0)+(HAT_OEV?N:0);
+    if(D.length!==soll) throw new Error('Die eingebetteten Daten haben eine unerwartete Grösse ('+D.length+' statt '+soll+').');
+  }catch(e){ fail(e.message||String(e)); return; }
+  let topo=GEO_RAW;
+  if(!topo){ try{ const c=new AbortController(); setTimeout(()=>c.abort(),8000); const q=await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json',{signal:c.signal}); if(q.ok) topo=await q.json(); }catch(e){} }
+  if(topo){ try{ S.geo=decodeTopo(topo); buildLandMask(); }catch(e){ S.geo=null; LAND=null; } }
+  renderAll(true);
+})();
+</script>
+</body>
+</html>
