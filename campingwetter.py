@@ -9,7 +9,7 @@ os.chdir(HIER)                      # cache/, site/ und Zwischendateien liegen n
 sys.path.insert(0, str(HIER))
 
 import eccodes_cosmo_resources      # Definitionen von MeteoSchweiz für die ICON-Daten
-os.environ.setdefault("ECCODES_DEFINITION_PATH", eccodes_cosmo_resources.get_definitions_path())
+os.environ.setdefault("ECCODES_DEFINITION_PATH", str(eccodes_cosmo_resources.get_definitions_path()))
 os.environ["ECCODES_VERSION_CHECK_OFF"] = "1"
 
 from einstellungen import *         # noqa: F401,F403
